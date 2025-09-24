@@ -1,6 +1,4 @@
-mkdir scripts -ea SilentlyContinue
-@'
-param(
+﻿param(
   [int]$Count = 3,                 # сколько PR за запуск
   [string]$Dir = "src/utils",      # куда класть .js
   [string]$Prefix = "util",        # префикс имени файла
@@ -15,49 +13,18 @@ function Require($name) {
     throw "Need '$name' in PATH. Install or add to PATH."
   }
 }
+
 Require git
 Require gh
 
 # Проверяем, что в git-репозитории
 git rev-parse --is-inside-work-tree *> $null
 
-# ---------- helpers ----------
-function Has-Changes {
-  $s = git status --porcelain
-  return -not [string]::IsNullOrWhiteSpace($s)
-}
-
-$Global:__stashUsed = $false
-function Ensure-Clean {
-  if (Has-Changes) {
-    $tag = Get-Date -Format "yyyyMMddHHmmss"
-    git stash push -u -m "farm-js-autostash-$tag" | Out-Null
-    $Global:__stashUsed = $true
-  }
-}
-
-function Restore-Stash {
-  if ($Global:__stashUsed) {
-    try { git stash pop | Out-Null } catch { Write-Warning "stash pop had conflicts — реши вручную" }
-    $Global:__stashUsed = $false
-  }
-}
-
-# Автокоммит самого скрипта, если он изменён
-$scriptPath = "scripts/farm-js.ps1"
-$status = git status --porcelain
-if ($status -match '(^|\n)\s*(\?\?|M)\s+scripts/farm-js\.ps1(\r|\n|$)') {
-  git add -- "$scriptPath"
-  git commit -m "chore: add/update farming script" | Out-Null
-}
-
-# Обновим базовую ветку локально
+# Обновим базовую ветку локально (по возможности)
 try {
-  Ensure-Clean
   git fetch origin $BaseBranch *> $null
   git switch $BaseBranch *> $null
   git pull --ff-only *> $null
-  Restore-Stash
 } catch { }
 
 # Папка для файлов
@@ -94,10 +61,8 @@ if (typeof module !== 'undefined') {
   # 2) создаём issue
   $issueNumber = gh issue create --title "$issueTitle" --body "$issueBody" --label "chore,docs" --json number --jq .number
 
-  # 3) ветка (чистим рабочее дерево перед переключением)
-  Ensure-Clean
+  # 3) ветка
   git switch -c "$branch"
-  Restore-Stash
 
   # 4) коммит
   git add -- "$filePath"
@@ -108,26 +73,19 @@ if (typeof module !== 'undefined') {
 
   # 6) PR
   $prBody = "What`n- Add small helper $fileName.`n`nWhy`n- DX farming / clarity.`n`nNote`n- Random ID: $rand`n`nLinks`n- Closes #$issueNumber"
-  $prUrl = gh pr create --title "$prTitle" --body $prBody --base "$BaseBranch" --head "$branch" --json url --jq .url 2>$null
-  if (-not $prUrl -or -not ($prUrl -match '^https?://')) {
-    Write-Warning "PR for branch '$branch' не создан. Проверь вывод 'gh pr create'. Пропускаю merge."
-  } else {
-    Write-Host "▶ PR created: $prUrl"
-    if ($AutoMerge) {
-      gh pr merge --squash --delete-branch "$prUrl"
-      Write-Host "   merged (squash) & branch deleted."
-    }
+  $prUrl = gh pr create --title "$prTitle" --body $prBody --base "$BaseBranch" --head "$branch" --json url --jq .url
+  Write-Host "▶ PR created: $prUrl"
+
+  if ($AutoMerge) {
+    gh pr merge --squash --delete-branch "$prUrl"
+    Write-Host "   merged (squash) & branch deleted."
   }
 
   $summary += "• $fileName → $prUrl"
-
-  # 7) вернуться на базовую ветку перед следующим циклом
-  Ensure-Clean
+  # вернуться на базовую ветку перед следующим циклом
   git switch "$BaseBranch" *> $null
   git pull --ff-only *> $null
-  Restore-Stash
 }
 
 Write-Host "`n✅ Done. Created $Count JS file(s) and PR(s):"
 $summary | ForEach-Object { Write-Host $_ }
-'@ | Out-File -Encoding UTF8 -FilePath scripts\farm-js.ps1

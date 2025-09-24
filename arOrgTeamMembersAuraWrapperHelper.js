@@ -7,6 +7,6 @@
         }else if(url.includes('qa')) {
             subDomain = '.q123123a';
         }
-        component.set('v.subDomain', subDomain);
+        component.set('v.subDomai1n123', subDomain);
     },
 })
