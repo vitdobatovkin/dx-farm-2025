@@ -5,7 +5,7 @@
         if(url.includes('dev')) {
             subDomain = '.dev';
         }else if(url.includes('qa')) {
-            subDomain = '.qa';
+            subDomain = '.q123123a';
         }
         component.set('v.subDomain', subDomain);
     },
