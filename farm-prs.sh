@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===== ПАРАМЕТРЫ =====
-COUNT="${3:-3}"            # сколько PR сделать за запуск
+COUNT="${1:-3}"            # сколько PR сделать за запуск
 DIR="${DIR:-src/utils}"    # куда кладём js-файлы
 PREFIX="${PREFIX:-util}"   # префикс имени файла
 BASE_BRANCH="${BASE_BRANCH:-main}" # базовая ветка
@@ -140,3 +140,4 @@ done
 echo
 echo "✅ Done. Created $COUNT JS file(s) and PR(s):"
 for line in "${summary[@]}"; do echo "$line"; done
+#./farm-prs.sh
