@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # ===== ПАРАМЕТРЫ =====
-COUNT="${1:-3}"            # сколько PR сделать за запуск
-DIR="${DIR:-src/utils}"    # куда кладём js-файлы
-PREFIX="${PREFIX:-util}"   # префикс имени файла
-BASE_BRANCH="${BASE_BRANCH:-main}" # базовая ветка
-AUTO_MERGE="${AUTO_MERGE:-true}"   # true|false — сразу мёржить PR
-LABELS="${LABELS:-docs,chore}"     # лейблы для issue
+COUNT="${1:-3}"                     # сколько PR сделать за запуск
+DIR="${DIR:-src/utils}"             # куда кладём js-файлы
+PREFIX="${PREFIX:-util}"            # префикс имени файла
+BASE_BRANCH="${BASE_BRANCH:-main}"  # базовая ветка
+AUTO_MERGE="${AUTO_MERGE:-true}"    # true|false — сразу мёржить PR
+LABELS="${LABELS:-docs,chore}"      # лейблы для issue
 # =====================
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "Need '$1' in PATH"; exit 1; }; }
@@ -28,7 +28,7 @@ ensure_clean() {
 }
 restore_stash() {
   if $stash_used; then
-    git stash pop || echo "⚠️  Stash pop had conflicts — разрули вручную"
+    git stash pop || echo "⚠️  Stash pop had conflicts — resolve manually"
     stash_used=false
   fi
 }
@@ -36,7 +36,7 @@ restore_stash() {
 # Автокоммит самого скрипта, если он изменён
 if git status --porcelain | grep -qE '(^|\s)farm-prs\.sh$'; then
   git add farm-prs.sh
-  git commit -m "chore: add/update farming script" >/dev/null
+  git commit -m "chore: add/update farming script" >/dev/null || true
 fi
 
 # Обновим base ветку
@@ -63,7 +63,7 @@ Random: $RAND"
   PR_TITLE="feat: add $FILE ($RAND)"
 
   # 1) генерим маленький JS
-  cat > "$PATH_JS" <<EOF
+  cat > "$PATH_JS" <<JS
 /**
  * Auto-generated helper ($FILE)
  * Created: $TS
@@ -75,17 +75,16 @@ function ${PREFIX}${RAND}(input){
 if (typeof module !== 'undefined') {
   module.exports = { ${PREFIX}${RAND} };
 }
-EOF
+JS
 
-  # 2) создаём issue (без --json — парсим номер из последней строки)
+  # 2) создаём issue (для старого gh — парсим номер из последней строки)
   ISSUE_OUT="$(gh issue create -t "$ISSUE_TITLE" -b "$ISSUE_BODY" -l "$LABELS" 2>/dev/null || true)"
   ISSUE_URL="$(printf '%s\n' "$ISSUE_OUT" | tail -n1 | tr -d '\r')"
   if printf '%s' "$ISSUE_URL" | grep -Eq '/issues/[0-9]+$'; then
     ISSUE_NUMBER="${ISSUE_URL##*/}"
   else
-    echo "⚠️  Не удалось получить номер issue. Вывод gh:"
+    echo "⚠️  Не удалось получить номер issue. gh output:"
     echo "$ISSUE_OUT"
-    echo "🛠  Продолжаю без ссылки на issue."
     ISSUE_NUMBER=""
   fi
 
@@ -115,7 +114,7 @@ EOF
   PR_URL="$(printf '%s\n' "$PR_OUT" | tr -d '\r' | grep -Eo 'https?://[^ ]+/pull/[0-9]+' | tail -n1)"
 
   if [ -z "$PR_URL" ]; then
-    echo "⚠️  PR для ветки '$BR' не создан. Вывод gh:"
+    echo "⚠️  PR для ветки '$BR' не создан. gh output:"
     echo "$PR_OUT"
   else
     echo "▶ PR created: $PR_URL"
@@ -123,7 +122,7 @@ EOF
       if gh pr merge --squash --delete-branch "$PR_URL"; then
         echo "   merged (squash) & branch deleted."
       else
-        echo "⚠️  Не удалось смержить $PR_URL — проверь условия (checks, права)."
+        echo "⚠️  Не удалось смержить $PR_URL — проверь checks/права."
       fi
     fi
   fi
@@ -132,7 +131,7 @@ EOF
 
   # 7) назад на base
   ensure_clean
-  git switch "$BASE_BRANCH" >/dev/null 2>&1 || git checkout "$BASE_BRANCH" >/dev/null 2>&1
+  git switch "$BASE_BRANCH" >/dev/null 2>&1 || git checkout "$BASE_BRANCH" >/devnull 2>&1
   git pull --ff-only >/dev/null 2>&1 || true
   restore_stash
 done
