@@ -1,0 +1,4 @@
+<aura:component controller="LightningButtonsHelper" implements="force:lightningQuickAction,force:hasRecordId,lightning:actionOverride,flexipage:availableForAllPageTypes" access="global">
+	<aura:attribute name="recordId" type="Id" access="global"/>
+    <aura:handler name="init" action="{!c.doInit}" value="{!this}" />
+</aura:component>

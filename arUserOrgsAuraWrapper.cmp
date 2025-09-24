@@ -1,0 +1,16 @@
+<aura:component implements="force:hasRecordId,flexipage:availableForAllPageTypes">
+    <aura:attribute name="displayForm" type="Boolean" default="false"/>
+    <aura:attribute name="columns" type="Map"/>
+    <aura:attribute name="organizationId" type="String"/>
+    <aura:attribute name="subDomain" type="String"/>
+    
+    <aura:handler name="init" value="{! this }" action="{! c.doInit }"/>
+    <aura:handler name="closeModal" event="c:CloseModal" action="{!c.handleClose}"/>
+
+    <lightning:navigation aura:id="navigationService"/>
+
+    <c:arUserOrgs recordId="{! v.recordId }" columns="{! v.columns }" oncreatenew="{!c.handleCreateNew}" onrowlevelaction="{!c.handleRowLevelAction}" aura:id="arUserOrgs"/>
+    <aura:if isTrue="{!v.displayForm}">
+        <c:NewOpportunityRecordTypeSelection recordId="{! v.recordId }" organizationId="{! v.organizationId }"/>
+    </aura:if>
+</aura:component>	
